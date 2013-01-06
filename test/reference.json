@@ -1,0 +1,21 @@
+{ "description" : "This is a sample playlist.",
+  "creators"    : ["Albin Stjerna"],
+  "repository"  : "git://eval.nu/playlists.git",
+  "uri"         : "http://eval.nu/test_playlist.json",
+  "updated"     : "1354458315",
+  "allow_match" : ["levenshtein"],
+  "comment"     : "No comments!",
+  "tags"        : ["ebm"],
+  "playlist"    : [{"artist" : "VNV Nation",
+                    "length" : 315,
+                    "title"  : "The Great Divide",
+                    "album"  : "Of Faith, Power and Glory"},
+                   {"artist" : "VNV Nation",
+                    "length" : 366,
+                    "title"  : "Streamline",
+                    "comment": "An optional comment regarding this song's relation to the rest of the list."},
+                   {"artist" : "Kent",
+                    "title"  : "Spökstad",
+                    "length" : 281
+                    }]
+}
