@@ -70,11 +70,18 @@ def test_rhythmbox_db_get_songs():
 def test_dirtree_db_get_songs():
   from db import dirtree as dt
   MUSIC_DIR = os.path.join(TESTDIR, "music_dir/")
+  
+  # All song objects MUST at least have these keys:
+  keys = ["length", "artist", "title", "mtime", "year", "album", "path"]
 
   for song in dt.get_songs(MUSIC_DIR):
-    assert len(song) == 4
     assert not None in song
     assert song != None
+    for key in keys:
+      assert key in song
+      # These keys must also have real vaules:
+      assert song[key] != None
+        
 
 def test_parse_reference_playlist():
   from playlist import transport as ts
@@ -133,16 +140,25 @@ def test_match():
   from playlist import match
   from playlist import transport as ts
   from db import rhythmbox as rb
+  from playlist.m3u import parse
 
   REFERENCE_PLAYLIST = os.path.join(TESTDIR, "reference.json")
+  REFERENCE_PLAYLIST_COMPILED_M3U = os.path.join(TESTDIR, "reference.m3u")
   TEST_DB = os.path.join(TESTDIR, "rhythmdb.xml")
 
   playlist = ts.load(REFERENCE_PLAYLIST)
   songs = rb.get_songs(TEST_DB)
 
+  # This is som preliminary testing that the playlist is actually sane
+  # (i.e. contains no missed matches and is the right size.
   matched = match.match_transport(playlist, songs)
   assert len(matched) == len(playlist['playlist'])
   assert not None in matched
+
+  # Here we compare the matched playlist to a hand-compiled m3u list.
+  compiled_playlist = parse(REFERENCE_PLAYLIST_COMPILED_M3U)
+  for i in xrange(len(matched)):
+    assert matched[i] == compiled_playlist[i]
 
 def test_index():
     from search import index
