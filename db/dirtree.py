@@ -7,7 +7,6 @@ from mutagen.easyid3 import EasyID3
 from mutagen.oggvorbis import OggVorbis
 from os import walk
 from os.path  import join as pathjoin
-from json import dumps
 
 def read_metadata_from_file(af):
   extension = af.split(".")[-1]

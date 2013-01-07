@@ -25,10 +25,19 @@ def parse(fn, name=None):
     
 def write(m3u, fn):
     "Write the m3u object to a file with name fn. Dumps all commments at the beginning."
-    with codecs.open(fn, 'wb', encoding="utf-8") as plf:
+    if not type(fn) == file:
+        plf = codecs.open(fn, 'wb', encoding="utf-8")
+    else:
+        writer = codecs.getwriter("utf8")
+        plf = writer(fn)
+    try:
         for comment in m3u.comments:
             plf.write(u"# %s\n" % comment)
         for path in m3u:
             plf.write("%s\n" % path)
+    finally:
+        plf.close()
+
+        
         
     
