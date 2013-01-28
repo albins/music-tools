@@ -68,5 +68,13 @@ def make_song(artist, length, title, album=None):
 def write(pl, fn):
     "Write a playlist dictionary to file."
     assert valid_playlist(pl)
-    with codecs.open(fn, 'wb', encoding="utf-8") as plf:
+    if not type(fn) == file:
+        plf = codecs.open(fn, 'wb', encoding="utf-8")
+    else:
+        writer = codecs.getwriter("utf8")
+        plf = writer(fn)
+    try:
         dump_json(pl, plf)
+    finally:
+        plf.close()
+        
