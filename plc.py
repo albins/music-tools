@@ -18,18 +18,22 @@ CURRENT_DIR = os.path.dirname(__file__)
 if len(sys.argv) > 1 and not len(sys.argv) > 2:
   playlist = ts.load(sys.argv[1])
 else:
-  sys.stderr.write("Usage: plc <playlist file> <optional output file>. If no output file is given, print to stdout.\n")
+  sys.stderr.write("Usage: plc <playlist file> <optional output file>. "
+                   "If no output file is given, print to stdout.\n")
   sys.exit()
 
 start_time = time.time()
 
 songs = match_transport(playlist, rb.get_songs(RB_DB))
 
-for i in xrange(len(songs)):
-  if songs[i] == None:
-    sys.stderr.write("E: couldn't find %d: %s by %s.\n" % ((i+1), playlist["playlist"][i]["title"], playlist["playlist"][i]["artist"]))
+for i, song in enumerate(songs):
+  if song == None:
+    sys.stderr.write("E: couldn't find %d: %s by %s.\n" % 
+                     ((i+1), playlist["playlist"][i]["title"], 
+                      playlist["playlist"][i]["artist"]))
 
-m3u_list = m3u.M3UList(songs, name=playlist['description'], comments=[playlist['comment']])
+m3u_list = m3u.M3UList(songs, name=playlist['description'], 
+                       comments=[playlist['comment']])
 
 target = sys.stdout
 
@@ -38,6 +42,7 @@ if len(sys.argv) > 2:
 
 m3u.write(m3u_list, target)
 
-sys.stderr.write("N: Finished matching in %f seconds.\n" % (time.time() - start_time))
+sys.stderr.write("N: Finished matching in %f seconds.\n" %
+                 (time.time() - start_time))
 
 
