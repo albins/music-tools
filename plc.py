@@ -10,9 +10,7 @@ from playlist.match import match_transport
 from db import rhythmbox as rb
 from db import dirtree
 
-# This /really/ must be handled better:
-MUSIC_DIR = "/var/storage/Musik/"
-RB_DB = '/home/albin/.local/share/rhythmbox/rhythmdb.xml'
+RB_DB = os.path.expanduser('~/.local/share/rhythmbox/rhythmdb.xml')
 CURRENT_DIR = os.path.dirname(__file__)
 
 if len(sys.argv) > 1 and not len(sys.argv) > 2:

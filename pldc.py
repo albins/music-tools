@@ -18,6 +18,7 @@ def main(args):
         ("Read the metadata from the song in path s, "
          "and mangle it to a valid line for the songs "
          "part of a transport playlist.")
+
         md = dt.read_metadata_from_file(s)
         return ts.make_song(artist=md['artist'][0],
                             length=md.info.length,

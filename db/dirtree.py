@@ -2,11 +2,20 @@
 
 import codecs
 from mutagen.flac import FLAC
+import mutagen
 from mutagen.mp3 import MP3
 from mutagen.easyid3 import EasyID3
 from mutagen.oggvorbis import OggVorbis
 from os import walk
-from os.path  import join as pathjoin
+from os.path import join as pathjoin
+from os.path import getmtime
+import time
+
+
+class FileFormatError(Exception):
+  "Thrown when an unsupported file type was passed."
+  pass
+
 
 def read_metadata_from_file(af):
   extension = af.split(".")[-1]
@@ -17,41 +26,69 @@ def read_metadata_from_file(af):
   elif extension == "mp3":
     return MP3(af, ID3=EasyID3)
   else:
-    raise Exception("File type %s not supported for file: %s." % (extension, af))
+    raise FileFormatError("File type %s not supported for file: %s." % (extension, af))
 
+def get_files(p):
+  for dirpath, _, files in walk(p):
+    for f in files:
+      # fixme: find out the actual encoding of the file system
+      yield unicode(pathjoin(dirpath, f), encoding="utf-8")
 
-def get_songs(tree):
+def get_songs(tree, prefilter=None, postfilter=None):
     """Generator that returns a dictionary of metadata for a number of songs in that directory tree."""
 
-    def get_files(p):
-        for dirpath, _, files in walk(p):
-            for f in files:
-                yield pathjoin(dirpath, f)
-
     for fl in get_files(tree):
-        try:
-            metadata = read_metadata_from_file(fl)
-        except Exception as e:        
-            continue
-        
-        try:
-            length = int(metadata.info.length)
-            artist = metadata["artist"][0]
-            title  = metadata["title"][0]
-            mtime = 0
-            year = 0
-            album = ""
-        except KeyError as e:
-            print "W: No metadata field \"%s\" in file %s" % (e[0], fl)
-            continue
+      mtime = time.ctime(getmtime(fl))
 
-        yield {"length" : length,
-               "artist" : artist,
-               "title"  : title,
-               "mtime"  : mtime,
-               "year"   : year,
-               "album"  : album,
-               "path"   : fl,
-               "mdata"  : metadata}
+      if prefilter:
+        if not prefilter(fl, mtime):
+          continue
+
+      try:
+        metadata = read_metadata_from_file(fl)
+      except FileFormatError as e:        
+        continue
+      except mutagen.flac.FLACNoHeaderError:
+        continue
+        
+      try:
+        genre = metadata.get("genre", None)
+        lastplayed = None
+        rating = metadata.get("rating:banshee", None)
+        length = int(metadata.info.length)
+        artist = unicode(metadata["artist"][0])
+        title  = unicode(metadata["title"][0])
+        year = metadata["date"][0]
+        track = metadata.get("tracknumber", [0])[0]
+        try:
+          tracknumber = int(track)
+        except ValueError:
+          # Handle those ugly "1/10" track number formats
+          tracknumber = int(str(track).split("/")[0])
+        album = unicode(metadata["album"][0])
+      except KeyError as e:
+        #print "W: No metadata field \"%s\" in file %s" % (e[0], fl)
+        continue
+        
+      if postfilter:
+        if not postfilter(fl, mtime, length, artist, title, year, album, tracknumber):
+          continue
+
+      yield {"length" : length,
+             "artist" : artist,
+             "title"  : title,
+             "mtime"  : mtime,
+             "year"   : year,
+             "album"  : album,
+             "path"   : fl,
+             "tracknumber" : tracknumber,
+             "tags"   : ["index"],
+             "lastplayed" : lastplayed,
+             "rating" : rating,
+             "genre" : genre
+             
+             # investigate which other metadata posts we should include.
+             #"mdata"  : metadata
+      }
 
       

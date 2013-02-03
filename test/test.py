@@ -6,6 +6,8 @@ import os
 # add it to the Python path.
 sys.path.append("..")
 
+from db.xapian_music import search
+
 TESTDIR = os.path.dirname(__file__)
 
 def test_m3u_object():
@@ -160,24 +162,127 @@ def test_match():
   for i in xrange(len(matched)):
     assert matched[i] == compiled_playlist[i]
 
+# Helper function for re-indexing for every test, so we don't have to
+# worry about breaking the database.
+def with_index(f):
+  from db.xapian_music import index
+  from shutil import rmtree as remove
+  
+  MUSIC_DIR = os.path.join(TESTDIR, "music_dir") 
+  DBPATH = os.path.join(TESTDIR, "music.db")
+
+  index(MUSIC_DIR, DBPATH)
+  
+  try:
+    f(DBPATH)
+  finally:
+    remove(DBPATH)
+
 def test_index():
-    from search import index
-    from search import search
-    from shutil import rmtree as remove
+  from xapian import Database
+  import json
+  
 
-    MUSIC_DIR = os.path.join(TESTDIR, "music_dir") 
-    DBPATH = os.path.join(TESTDIR, "music.db")
+  def search_vnv(db):
+    vnv_nation_artist  = search(dbpath=db, querystring='artist:"VNV Nation"')
+    assert len(vnv_nation_artist) == 2
+    vnv_nation_plain = search(dbpath=db, querystring="VNV Nation")
+    assert len(vnv_nation_plain) == 2
+    assert vnv_nation_plain[0]['data']['artist'] == "VNV Nation" 
 
+  def search_kent(db):
+    kent_artist = search(dbpath=db, querystring="artist:Kent")
+    assert len(kent_artist) == 1
+
+  def search_false(db):
+    false_search = search(dbpath=db, querystring="gurka")
+    assert len(false_search) == 0
+  
+  def search_all(db):
+    database = Database(db)
     try:
-        index(datapath = MUSIC_DIR, dbpath = DBPATH)
+      # Ok, this is UGLY, and we should implement a proper interface for this.
+      documents = [database.get_document(post.docid)
+                   for post in database.postlist("")]
+      songs = [json.loads(doc.get_data()) for doc in documents]
 
-        vnv_nation_artist  = search(dbpath=DBPATH, querystring="artist:\"VNV Nation\"")
-        assert len(vnv_nation_artist) == 2
-        vnv_nation_plain = search(dbpath=DBPATH, querystring="VNV Nation")
-        assert len(vnv_nation_plain) == 2
-
-        false_search = search(dbpath=DBPATH, querystring="gurka")
-        assert len(false_search) == 0
+      print "The following songs were indexed:"
+      for song in songs:
+        print song['path']
+      assert len(songs) == 6
+      
     finally:
-        pass
-#        remove(DBPATH)  
+      database.close()
+
+    
+  with_index(search_vnv)
+  with_index(search_kent)
+  with_index(search_false)
+  with_index(search_all)
+
+def test_add_tags():
+  from db.xapian_music import add_tag
+  
+  def add_tags(db):
+    q = 'artist:"VNV Nation"'
+    tag = "ebm"
+    add_tag(db, q, tag)
+    
+    for song in search(db, q):
+      assert tag in song['data']['tags']
+
+    print search(db, q)
+    print search(db, "tag:ebm")
+    assert len(search(db, q)) == len(search(db, "tag:%s" % tag))
+    
+
+  with_index(add_tags)
+
+def test_remove_tags():
+  assert False
+
+def test_search_album():
+  assert False
+
+def test_sort_mtime():
+  assert False
+
+def test_sort_year():
+  assert False
+
+def test_sort_length():
+  assert False
+
+def test_sort_tracknumber():
+  assert False
+
+def test_sort_lastplayed():
+  assert False
+
+def test_search_genre():
+  assert False
+
+def test_search_year_interval():
+  assert False
+
+def test_search_rating_interval():
+  assert False
+
+def test_find_all():
+  from db.xapian_music import all_songs
+  from db.dirtree import get_files
+  
+  def test_all_songs(db):
+    files = [f for f in get_files(os.path.join(TESTDIR, "music_dir"))]
+    song_paths = [song['data']['path'] for song in all_songs(db)]
+
+    # Did we get all songs?
+    print song_paths
+    assert len(song_paths) == len(files)
+
+    # ...and did we get the RIGHT songs?
+    for f in files:
+      print f
+      assert f in song_paths
+
+  with_index(test_all_songs)

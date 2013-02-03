@@ -63,7 +63,8 @@ def search(dbpath, querystring):
 
     # And print out something about each match
     matches = []
-    for match in enquire.get_mset(0, 100):
-        matches.append(match.docid)
+    for match in enquire.get_mset(0, db.get_doccount()):
+        matches.append({docid: match.docid})
+        
 
     return matches
