@@ -1,0 +1,26 @@
+* What is?
+This is a small collection of command-line related music tools. Currently, the only really usable parts are =pldc.py= and =plc.py=, two programs that compiles an m3u playlist to and from (respectively) a transport file format.
+
+The idea is to make playlists portable by manipulating them into a set of search queries. The user can then run these queries against her music database (currently only Rhythmbox) and recieve an m3u file with locally valid file paths. Basically the format is just JSON, see playlist/transport.py for the valid implementation and test/reference.json for a reference playlist.
+
+A whole system of xapian-backed music search/playback tools in the spirit of the notmuch mail reader for Emacs is also planned, but in the very early stages of implementation.
+* Requirements
+- mutagen
+- python-levenshtein (for track matching)
+- currently: a working rhythmbox database. Others might be supported in the future. There is strictly speaking an interface that supports walking through a music directory, but it's hideously slow since /all/ music files must be read and parsed, so it isn't used by plc.py.
+- nose tests (for testing)
+* Usage
+Run tests:
+#+BEGIN_SRC python
+nosetests
+#+END_SRC
+
+Decompile an .m3u to a transport playlist:
+#+BEGIN_SRC python
+pldc.py playlist.m3u > portable.json
+#+END_SRC
+
+Compile a transport playlist into an m3u file:
+#+BEGIN_SRC python
+plc.py portable.json playlist.m3u
+#+END_SRC
