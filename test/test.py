@@ -214,7 +214,6 @@ def test_index():
     finally:
       database.close()
 
-    
   with_index(search_vnv)
   with_index(search_kent)
   with_index(search_false)
