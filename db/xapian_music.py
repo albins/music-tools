@@ -64,13 +64,9 @@ def index(datapath, dbpath):
         doc.add_boolean_term(idterm)
         db.replace_document(idterm, doc)
 
-def search(dbpath, querystring):
-    # offset - defines starting point within result set
-    # pagesize - defines number of records to retrieve
-
-    # Open the database we're going to search.
-    db = xapian.Database(dbpath)
-
+def parse_query(q):
+    "Parse the query <q> and return a query ready for use with enquire.set_query()."
+    
     # Set up a QueryParser with a stemmer and suitable prefixes
     queryparser = xapian.QueryParser()
     queryparser.set_stemmer(xapian.Stem("en"))
@@ -81,40 +77,38 @@ def search(dbpath, querystring):
     for term in PREFIXES:
         queryparser.add_prefix(term, PREFIXES[term])
 
-
     # And parse the query
-    query = queryparser.parse_query(querystring)
+    return queryparser.parse_query(q)    
+
+def query(dbpath, querystring):
+    "Query the database at path <dbpath> with the string <querystring>. Return iterator over maches. This is mostly for internal use, as it returns xapian match objects."
+
+    # Open the database we're going to search.
+    db = xapian.Database(dbpath)
+
+    query = parse_query(querystring)
 
     # Use an Enquire object on the database to run the query
     enquire = xapian.Enquire(db)
     enquire.set_query(query)
 
-    # And print out something about each match
-    matches = []
     for match in enquire.get_mset(0, db.get_doccount()):
-        matches.append({'id': match.docid,
-                        'rank' : match.rank + 1,
-                        'percent' : match.percent,
-                        'data' : json.loads(unicode(match.document.get_data()))})
-                    
+        yield match
 
-    return matches
+def search(dbpath, querystring):
+    "Search the database at dbpath with querystring. Return list of matches."
+
+    return [({'id': match.docid,
+                'rank' : match.rank + 1,
+                'percent' : match.percent,
+                'data' : json.loads(unicode(match.document.get_data()))})
+            for match in query(dbpath, querystring)]
 
 def add_tag(dbpath, querystring, tag):
+    "Add the tag <tag> to all songs matching <querystring>."
     db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
-
-    queryparser = xapian.QueryParser()
-    queryparser.set_stemmer(xapian.Stem("en"))
-    queryparser.set_stemming_strategy(queryparser.STEM_SOME)
-
-    for term in PREFIXES:
-        queryparser.add_prefix(term, PREFIXES[term])
-
-    query = queryparser.parse_query(querystring)
-    enquire = xapian.Enquire(db)
-    enquire.set_query(query)
-
-    for m in enquire.get_mset(0, db.get_doccount()):
+    
+    for m in query(dbpath, querystring):
         doc = m.document
         data = json.loads(doc.get_data())
         new_tags = data['tags']
@@ -123,6 +117,8 @@ def add_tag(dbpath, querystring, tag):
         doc.add_boolean_term('K' + tag.lower())
         data['tags'] = new_tags
         doc.set_data(unicode(json.dumps(data)))
+        # This is to make sure the term was actually added BEFORE
+        # modifying the database.
         assert 'K' + tag.lower() in [t.term for t in doc.termlist()]
 
         db.replace_document(m.docid, doc)
@@ -130,18 +126,7 @@ def add_tag(dbpath, querystring, tag):
 def remove_tag(dbpath, querystring, tag):
     db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
 
-    queryparser = xapian.QueryParser()
-    queryparser.set_stemmer(xapian.Stem("en"))
-    queryparser.set_stemming_strategy(queryparser.STEM_SOME)
-
-    for term in PREFIXES:
-        queryparser.add_prefix(term, PREFIXES[term])
-
-    query = queryparser.parse_query(querystring)
-    enquire = xapian.Enquire(db)
-    enquire.set_query(query)
-    
-    for m in enquire.get_mset(0, db.get_doccount()):
+    for m in query(dbpath, querystring):
         doc = m.document
         data = json.loads(doc.get_data())
         new_tags = [tag for tag in data['tags'] if tag != tag]
