@@ -13,12 +13,15 @@ PREFIXES = {'artist' : 'A',
             'title' : 'S',
             'year' : 'Y',
             'path' : 'U',
+            'album' : 'XALBUM',
             'mtime' : 'XMTIME',
             'title' : 'XTITLE',
             'tracknumber' : 'XTRACKNR'}
 
+NUMERIC_PREFIXES = {}
+
 # Use slot #1 for tags
-XAPIAN_TAGS = 1
+#XAPIAN_TAGS = 1
 
 def index(datapath, dbpath):
     # Create or open the database we're going to be writing to.

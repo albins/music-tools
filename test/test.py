@@ -241,7 +241,17 @@ def test_remove_tags():
   assert False
 
 def test_search_album():
-  assert False
+
+  def search_album(db):
+    q = 'album:"Automatic"'
+    songs = search(db, q)
+    assert len(songs) == 1
+    song_data = songs[0]['data']
+    assert song_data['title'] == "Streamline"
+    assert song_data['path'] == os.path.join(TESTDIR, 
+                                             "music_dir/06-streamline.mp3")
+
+  with_index(search_album)
 
 def test_sort_mtime():
   assert False
