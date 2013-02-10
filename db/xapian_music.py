@@ -127,9 +127,31 @@ def add_tag(dbpath, querystring, tag):
 
         db.replace_document(m.docid, doc)
     
+def remove_tag(dbpath, querystring, tag):
+    db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
 
-def remove_tag(dbpath, querystring, tags):
-    return False
+    queryparser = xapian.QueryParser()
+    queryparser.set_stemmer(xapian.Stem("en"))
+    queryparser.set_stemming_strategy(queryparser.STEM_SOME)
+
+    for term in PREFIXES:
+        queryparser.add_prefix(term, PREFIXES[term])
+
+    query = queryparser.parse_query(querystring)
+    enquire = xapian.Enquire(db)
+    enquire.set_query(query)
+    
+    for m in enquire.get_mset(0, db.get_doccount()):
+        doc = m.document
+        data = json.loads(doc.get_data())
+        new_tags = [tag for tag in data['tags'] if tag != tag]
+
+        doc.remove_term('K' + tag.lower())
+        data['tags'] = new_tags
+        doc.set_data(unicode(json.dumps(data)))
+        assert 'K' + tag.lower() not in [t.term for t in doc.termlist()]
+
+        db.replace_document(m.docid, doc)
 
 def all_songs(dbpath):
     "Iterator over all songs stored in the database <dbpath>."

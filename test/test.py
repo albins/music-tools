@@ -7,6 +7,7 @@ import os
 sys.path.append("..")
 
 from db.xapian_music import search
+import db.xapian_music
 
 TESTDIR = os.path.dirname(__file__)
 
@@ -219,26 +220,44 @@ def test_index():
   with_index(search_false)
   with_index(search_all)
 
+def add_ebm(dbpath):
+  from db.xapian_music import add_tag
+  from db.xapian_music import search
+
+  q = 'artist:"VNV Nation"'
+  tag = "ebm"
+  add_tag(dbpath, q, tag)
+  
+  for song in search(dbpath, q):
+    assert tag in song['data']['tags']
+    assert len(search(dbpath, q)) == len(search(dbpath, "tag:%s" % tag))
+
 def test_add_tags():
   from db.xapian_music import add_tag
   
-  def add_tags(db):
-    q = 'artist:"VNV Nation"'
-    tag = "ebm"
-    add_tag(db, q, tag)
-    
-    for song in search(db, q):
-      assert tag in song['data']['tags']
-
-    print search(db, q)
-    print search(db, "tag:ebm")
-    assert len(search(db, q)) == len(search(db, "tag:%s" % tag))
-    
-
-  with_index(add_tags)
+  with_index(add_ebm)
 
 def test_remove_tags():
-  assert False
+  from db.xapian_music import remove_tag
+  from db.xapian_music import add_tag
+  
+  def remove_ebm(dbpath):
+    from db.xapian_music import add_tag
+    from db.xapian_music import search
+
+    q = 'artist:"VNV Nation"'
+    tag = "ebm"
+    
+    remove_tag(dbpath, q, tag)
+    assert not search(dbpath, 'tag:ebm')
+    for song in search(dbpath, q):
+      assert tag not in song['data']['tags']
+    
+  def add_and_remove_ebm(db):
+    add_ebm(db)
+    remove_ebm(db)
+
+  with_index(add_and_remove_ebm)
 
 def test_search_album():
 
