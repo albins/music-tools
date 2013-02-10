@@ -95,8 +95,6 @@ def search(dbpath, querystring):
         matches.append({'id': match.docid,
                         'rank' : match.rank + 1,
                         'percent' : match.percent,
-                        # FIXME handle the case where there are no tags here
-                        #'tags' : json.loads(unicode(match.document.get_value(XAPIAN_TAGS))),
                         'data' : json.loads(unicode(match.document.get_data()))})
                     
 
