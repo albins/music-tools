@@ -13,14 +13,15 @@ import time
 PREFIXES = {'artist' : 'A',
             'title' : 'S',
             'path' : 'U',
-            'album' : 'XALBUM',
-            'title' : 'XTITLE'}
+            'album' : 'XALBUM'}
 
 # These numeric prefixes will also be used as data slots.
 NUMERIC_PREFIXES = ['year', 'mtime',
                     'tracknumber', 'rating']
 
 def index(datapath, dbpath):
+    """Create or update the index stored in database <dbpath>, using
+    the music file/directory structure in <datapath>."""
     # Create or open the database we're going to be writing to.
     db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
 
@@ -29,7 +30,8 @@ def index(datapath, dbpath):
     termgenerator.set_stemmer(xapian.Stem("en"))
 
     def make_value(s, term):
-        "Parse various string values and return suitable numeric representations."
+        """Parse various string values and return suitable numeric
+        representations."""
         if term == 'year':
             # This is in a date string format due to serialization.
             return xapian.sortable_serialise(int(s))
@@ -50,9 +52,8 @@ def index(datapath, dbpath):
             termgenerator.index_text(unicode(song[term]), 1, PREFIXES[term])
 
         # Index fields without prefixes for general search.
-        for pos, term in enumerate(PREFIXES):
+        for term in PREFIXES:
             termgenerator.index_text(unicode(song[term]))
-            #if pos < len(term):
             termgenerator.increase_termpos()
 
         for data_slot, term in enumerate(NUMERIC_PREFIXES):
@@ -63,7 +64,8 @@ def index(datapath, dbpath):
         # Store all the fields for display purposes.
         doc.set_data(unicode(json.dumps(song)))
 
-        # use doc.add_term(str.join(K, "my tag"), 0) to add tags the way notmuch does
+        # use doc.add_term(str.join(K, "my tag"), 0) to add tags the
+        # way notmuch does
 
         # We use the identifier to ensure each object ends up in the
         # database only once no matter how many times we run the
@@ -79,7 +81,8 @@ def index(datapath, dbpath):
         db.replace_document(idterm, doc)
 
 def parse_query(q):
-    "Parse the query <q> and return a query ready for use with enquire.set_query()."
+    """Parse the query <q> and return a query ready for use with
+    enquire.set_query()."""
     
     # Set up a QueryParser with a stemmer and suitable prefixes
     queryparser = xapian.QueryParser()
@@ -108,11 +111,9 @@ def query(dbpath, querystring, order=None):
     # Open the database we're going to search.
     db = xapian.Database(dbpath)
 
-    query = parse_query(querystring)
-
     # Use an Enquire object on the database to run the query
     enquire = xapian.Enquire(db)
-    enquire.set_query(query)
+    enquire.set_query(parse_query(querystring))
 
     # Don't care about document ID order, just optimize.
     enquire.set_docid_order(enquire.DONT_CARE)
@@ -153,6 +154,8 @@ def add_tag(dbpath, querystring, tag):
         db.replace_document(m.docid, doc)
     
 def remove_tag(dbpath, querystring, tag):
+    """Remove the tag <tag> (if existing) from all entries in the
+    database at dbpath matching querystring."""
     db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
 
     for m in query(dbpath, querystring):
