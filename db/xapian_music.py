@@ -17,10 +17,8 @@ PREFIXES = {'artist' : 'A',
             'title' : 'XTITLE'}
 
 # These numeric prefixes will also be used as data slots.
-NUMERIC_PREFIXES = {'year' : 'Y',
-                    'mtime' : 'XMTIME',
-                    'tracknumber' : 'XTRACKNR',
-                    'rating' : 'XRATING'}
+NUMERIC_PREFIXES = ['year', 'mtime',
+                    'tracknumber', 'rating']
 
 def index(datapath, dbpath):
     # Create or open the database we're going to be writing to.
@@ -101,8 +99,11 @@ def parse_query(q):
     # And parse the query
     return queryparser.parse_query(q)    
 
-def query(dbpath, querystring):
-    "Query the database at path <dbpath> with the string <querystring>. Return iterator over maches. This is mostly for internal use, as it returns xapian match objects."
+def query(dbpath, querystring, order=None):
+    """Query the database at path <dbpath> with the string
+    <querystring>. Return iterator over maches. This is mostly for
+    internal use, as it returns xapian match objects. Optionally takes
+    the argument order with valid values None or any numeric term."""
 
     # Open the database we're going to search.
     db = xapian.Database(dbpath)
@@ -113,17 +114,24 @@ def query(dbpath, querystring):
     enquire = xapian.Enquire(db)
     enquire.set_query(query)
 
+    # Don't care about document ID order, just optimize.
+    enquire.set_docid_order(enquire.DONT_CARE)
+
+    if order in NUMERIC_PREFIXES:
+        slot_id = NUMERIC_PREFIXES.index(order)
+        enquire.set_sort_by_value_then_relevance(slot_id, False)
+
     for match in enquire.get_mset(0, db.get_doccount()):
         yield match
 
-def search(dbpath, querystring):
+def search(dbpath, querystring, order=None):
     "Search the database at dbpath with querystring. Return list of matches."
 
     return [({'id': match.docid,
                 'rank' : match.rank + 1,
                 'percent' : match.percent,
                 'data' : json.loads(unicode(match.document.get_data()))})
-            for match in query(dbpath, querystring)]
+            for match in query(dbpath, querystring, order)]
 
 def add_tag(dbpath, querystring, tag):
     "Add the tag <tag> to all songs matching <querystring>."

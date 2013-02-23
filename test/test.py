@@ -272,11 +272,34 @@ def test_search_album():
 
   with_index(search_album)
 
+def assert_ascending(values):
+  last_value = 0
+
+  for v in values:
+    assert v >= last_value
+    last_value = v
+    print last_value
+
 def test_sort_mtime():
-  assert False
+
+  def sort_mtime(db):
+    q = 'artist:VNV Nation'
+    songs = search(db, q, order="mtime")
+    mtimes = [s['data']['mtime'] for s in songs]
+    assert_ascending(mtimes)
+
+  with_index(sort_mtime)
 
 def test_sort_year():
-  assert False
+  
+  def sort_year(db):
+    q = 'artist:VNV Nation'
+    songs = search(db, q, order="year")
+    years = [s['data']['year'] for s in songs]
+
+    assert_ascending(years)
+
+  with_index(sort_year)
 
 def test_sort_length():
   assert False
