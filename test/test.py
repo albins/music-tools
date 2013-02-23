@@ -291,7 +291,22 @@ def test_search_genre():
   assert False
 
 def test_search_year_interval():
-  assert False
+
+  def search_interval_year(db):
+    q_all = 'year..3000'
+    q_2010 = 'year..2010'
+    q_1999 = 'year..1999'
+    q_early_00s = 'year1999..2004'
+    songs_all = search(db, q_all)
+    songs_2010 = search(db, q_2010)
+    songs_1999 = search(db, q_1999)
+    songs_early_00s = search(db, q_early_00s)
+    assert len(songs_all) == 6
+    assert len(songs_2010) == 5
+    assert len(songs_1999) == 0
+    assert len(songs_early_00s) == 2
+    
+  with_index(search_interval_year)
 
 def test_search_rating_interval():
   assert False

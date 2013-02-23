@@ -5,23 +5,22 @@ import xapian
 from db.dirtree import get_songs
 import json
 import os
+import time
 
 # a mapping of query term/aliases → xapian prefixes.
 # most of these are also keys to the song[] dict.
 # Prefixes from http://xapian.org/docs/omega/termprefixes.html
 PREFIXES = {'artist' : 'A',
             'title' : 'S',
-            'year' : 'Y',
             'path' : 'U',
             'album' : 'XALBUM',
-            'mtime' : 'XMTIME',
-            'title' : 'XTITLE',
-            'tracknumber' : 'XTRACKNR'}
+            'title' : 'XTITLE'}
 
-NUMERIC_PREFIXES = {}
-
-# Use slot #1 for tags
-#XAPIAN_TAGS = 1
+# These numeric prefixes will also be used as data slots.
+NUMERIC_PREFIXES = {'year' : 'Y',
+                    'mtime' : 'XMTIME',
+                    'tracknumber' : 'XTRACKNR',
+                    'rating' : 'XRATING'}
 
 def index(datapath, dbpath):
     # Create or open the database we're going to be writing to.
@@ -30,6 +29,18 @@ def index(datapath, dbpath):
     # Set up a TermGenerator that we'll use in indexing.
     termgenerator = xapian.TermGenerator()
     termgenerator.set_stemmer(xapian.Stem("en"))
+
+    def make_value(s, term):
+        "Parse various string values and return suitable numeric representations."
+        if term == 'year':
+            # This is in a date string format due to serialization.
+            return xapian.sortable_serialise(int(s))
+        if term == 'mtime':
+            return xapian.sortable_serialise(time.mktime(time.strptime(s)))
+        if term == 'rating':
+            return xapian.sortable_serialise(max([float(n) for n in s]))
+        else:
+            return xapian.sortable_serialise(int(s))
 
     for song in get_songs(datapath):
         # We make a document and tell the term generator to use this.
@@ -45,6 +56,11 @@ def index(datapath, dbpath):
             termgenerator.index_text(unicode(song[term]))
             #if pos < len(term):
             termgenerator.increase_termpos()
+
+        for data_slot, term in enumerate(NUMERIC_PREFIXES):
+            if song[term]:
+                doc.add_value(data_slot, make_value(song[term], term))
+                
 
         # Store all the fields for display purposes.
         doc.set_data(unicode(json.dumps(song)))
@@ -76,6 +92,11 @@ def parse_query(q):
     
     for term in PREFIXES:
         queryparser.add_prefix(term, PREFIXES[term])
+
+    for data_slot, term in enumerate(NUMERIC_PREFIXES):
+        queryparser.add_valuerangeprocessor(
+            xapian.NumberValueRangeProcessor(data_slot, term, True)
+        )
 
     # And parse the query
     return queryparser.parse_query(q)    
