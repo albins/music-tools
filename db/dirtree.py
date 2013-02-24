@@ -52,9 +52,9 @@ def get_songs(tree, prefilter=None, postfilter=None):
         continue
         
       try:
-        genre = metadata.get("genre", None)
+        genre = metadata.get("genre", [None])[0]
         lastplayed = None
-        rating = metadata.get("rating:banshee", None)
+        rating = metadata.get("rating:banshee", [None])[0]
         length = int(metadata.info.length)
         artist = unicode(metadata["artist"][0])
         title  = unicode(metadata["title"][0])
