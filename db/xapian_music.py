@@ -13,11 +13,12 @@ import time
 PREFIXES = {'artist' : 'A',
             'title' : 'S',
             'path' : 'U',
+            'genre' : 'XGENRE',
             'album' : 'XALBUM'}
 
 # These numeric prefixes will also be used as data slots.
-NUMERIC_PREFIXES = ['year', 'mtime',
-                    'tracknumber', 'rating']
+NUMERIC_PREFIXES = ['year', 'mtime', 'lastplayed',
+                    'tracknumber', 'rating', 'length']
 
 def index(datapath, dbpath):
     """Create or update the index stored in database <dbpath>, using
@@ -38,7 +39,7 @@ def index(datapath, dbpath):
         if term == 'mtime':
             return xapian.sortable_serialise(time.mktime(time.strptime(s)))
         if term == 'rating':
-            return xapian.sortable_serialise(max([float(n) for n in s]))
+            return xapian.sortable_serialise(float(s))
         else:
             return xapian.sortable_serialise(int(s))
 

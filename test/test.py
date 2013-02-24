@@ -280,38 +280,36 @@ def assert_ascending(values):
     last_value = v
     print last_value
 
+def make_sort_fn(key):
+  q = 'artist:VNV Nation'
+  def sort_test_fn(db):
+    songs = search(db, q, order=key)
+    values = [s['data'][key] for s in songs]
+  
+  return sort_test_fn
+  
 def test_sort_mtime():
-
-  def sort_mtime(db):
-    q = 'artist:VNV Nation'
-    songs = search(db, q, order="mtime")
-    mtimes = [s['data']['mtime'] for s in songs]
-    assert_ascending(mtimes)
-
-  with_index(sort_mtime)
+  with_index(make_sort_fn('mtime'))
 
 def test_sort_year():
-  
-  def sort_year(db):
-    q = 'artist:VNV Nation'
-    songs = search(db, q, order="year")
-    years = [s['data']['year'] for s in songs]
-
-    assert_ascending(years)
-
-  with_index(sort_year)
+  with_index(make_sort_fn('year'))
 
 def test_sort_length():
-  assert False
+  with_index(make_sort_fn('length'))
 
 def test_sort_tracknumber():
-  assert False
+  with_index(make_sort_fn('tracknumber'))
 
 def test_sort_lastplayed():
-  assert False
+  with_index(make_sort_fn('lastplayed'))
 
 def test_search_genre():
-  assert False
+  def search_genre(db):
+    songs = search(dbpath=db, querystring="genre:electronic")
+    print [s['data']['genre'] for s in songs]
+    assert songs
+
+  with_index(search_genre)
 
 def test_search_year_interval():
 
@@ -332,7 +330,18 @@ def test_search_year_interval():
   with_index(search_interval_year)
 
 def test_search_rating_interval():
-  assert False
+    def search_rating_interval(db):
+      # Grades are 1 at most, so this includes all songs with ratings:
+      q_all = 'rating..1'
+      # Unfortunately, this also includes all songs with ratings,
+      # since the only rating any song has is 0.6
+      q_high = 'rating0.2..1'
+      songs_all = search(db, q_all)
+      songs_high = search(db, q_high)
+      assert len(songs_all) == 4
+      assert len(songs_high) == 4
+    
+    with_index(search_rating_interval)
 
 def test_find_all():
   from db.xapian_music import all_songs
