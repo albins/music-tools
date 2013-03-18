@@ -45,20 +45,20 @@ def test_m3u_write():
   TEMP_FILE = os.path.join(TESTDIR, "m3u_write_test.m3u")
 
   playlist = M3UList(["/music/file_1.mp3", "/music/file_2.mp3"], comments=["This is a comment", "This is another comment"])
-  
+
   try:
     write(playlist, TEMP_FILE)
     new_playlist = parse(TEMP_FILE)
     assert playlist == new_playlist
     assert len(playlist.comments) == len(new_playlist.comments)
     assert playlist.comments[0] == new_playlist.comments[0]
-    
+
     for comment in playlist.comments:
       assert comment in new_playlist.comments
 
   finally:
     remove(TEMP_FILE)
-  
+
 def test_rhythmbox_db_get_songs():
   from db import rhythmbox as rb
   TEST_DB = os.path.join(TESTDIR, "rhythmdb.xml")
@@ -69,11 +69,11 @@ def test_rhythmbox_db_get_songs():
     assert len(song) == 3
     assert not None in song
     assert song != None
-    
+
 def test_dirtree_db_get_songs():
   from db import dirtree as dt
   MUSIC_DIR = os.path.join(TESTDIR, "music_dir/")
-  
+
   # All song objects MUST at least have these keys:
   keys = ["length", "artist", "title", "mtime", "year", "album", "path"]
 
@@ -84,7 +84,7 @@ def test_dirtree_db_get_songs():
       assert key in song
       # These keys must also have real vaules:
       assert song[key] != None
-        
+
 
 def test_parse_reference_playlist():
   from playlist import transport as ts
@@ -101,7 +101,7 @@ def test_playlist_creators():
   from playlist import transport as ts
 
   REFERENCE_PLAYLIST = os.path.join(TESTDIR, "reference.json")
-  
+
   valid_song = ts.make_song("Test artist", 200, "Test song")
   invalid_song = {"fisk" : "sylt"}
   invalid_song2 = {"artist" : "Test_artist"}
@@ -110,12 +110,12 @@ def test_playlist_creators():
   assert not ts.valid_song(invalid_song)
   assert not ts.valid_song(invalid_song2)
 
-  valid_playlist = ts.make_playlist([valid_song], 
+  valid_playlist = ts.make_playlist([valid_song],
                                  "http://test.com/test.json",
                                  "Test playlist",
                                  ["Albin Stjerna"])
 
-  invalid_playlist = ts.make_playlist([invalid_song, invalid_song2], 
+  invalid_playlist = ts.make_playlist([invalid_song, invalid_song2],
                                  "http://test.com/test.json",
                                  "Test playlist",
                                  ["Albin Stjerna"])
@@ -126,7 +126,7 @@ def test_playlist_creators():
 def test_transport_write():
   from playlist import transport as ts
   from os import remove
-  
+
   TEMP_FILE = os.path.join(TESTDIR, "transport_write_test.json")
   REFERENCE_PLAYLIST = os.path.join(TESTDIR, "reference.json")
 
@@ -168,28 +168,29 @@ def test_match():
 def with_index(f):
   from db.xapian_music import index
   from shutil import rmtree as remove
-  
-  MUSIC_DIR = os.path.join(TESTDIR, "music_dir") 
+
+  MUSIC_DIR = os.path.join(TESTDIR, "music_dir")
   DBPATH = os.path.join(TESTDIR, "music.db")
 
   index(MUSIC_DIR, DBPATH)
-  
+
   try:
     f(DBPATH)
   finally:
-    remove(DBPATH)
+      #remove(DBPATH)
+    pass
 
 def test_index():
   from xapian import Database
   import json
-  
+
 
   def search_vnv(db):
     vnv_nation_artist  = search(dbpath=db, querystring='artist:"VNV Nation"')
     assert len(vnv_nation_artist) == 2
     vnv_nation_plain = search(dbpath=db, querystring="VNV Nation")
     assert len(vnv_nation_plain) == 2
-    assert vnv_nation_plain[0]['data']['artist'] == "VNV Nation" 
+    assert vnv_nation_plain[0]['data']['artist'] == "VNV Nation"
 
   def search_kent(db):
     kent_artist = search(dbpath=db, querystring="artist:Kent")
@@ -198,7 +199,7 @@ def test_index():
   def search_false(db):
     false_search = search(dbpath=db, querystring="gurka")
     assert len(false_search) == 0
-  
+
   def search_all(db):
     database = Database(db)
     try:
@@ -211,7 +212,7 @@ def test_index():
       for song in songs:
         print song['path']
       assert len(songs) == 6
-      
+
     finally:
       database.close()
 
@@ -227,32 +228,32 @@ def add_ebm(dbpath):
   q = 'artist:"VNV Nation"'
   tag = "ebm"
   add_tag(dbpath, q, tag)
-  
+
   for song in search(dbpath, q):
     assert tag in song['data']['tags']
     assert len(search(dbpath, q)) == len(search(dbpath, "tag:%s" % tag))
 
 def test_add_tags():
   from db.xapian_music import add_tag
-  
+
   with_index(add_ebm)
 
 def test_remove_tags():
   from db.xapian_music import remove_tag
   from db.xapian_music import add_tag
-  
+
   def remove_ebm(dbpath):
     from db.xapian_music import add_tag
     from db.xapian_music import search
 
     q = 'artist:"VNV Nation"'
     tag = "ebm"
-    
+
     remove_tag(dbpath, q, tag)
     assert not search(dbpath, 'tag:ebm')
     for song in search(dbpath, q):
       assert tag not in song['data']['tags']
-    
+
   def add_and_remove_ebm(db):
     add_ebm(db)
     remove_ebm(db)
@@ -267,7 +268,7 @@ def test_search_album():
     assert len(songs) == 1
     song_data = songs[0]['data']
     assert song_data['title'] == "Streamline"
-    assert song_data['path'] == os.path.join(TESTDIR, 
+    assert song_data['path'] == os.path.join(TESTDIR,
                                              "music_dir/06-streamline.mp3")
 
   with_index(search_album)
@@ -285,9 +286,9 @@ def make_sort_fn(key):
   def sort_test_fn(db):
     songs = search(db, q, order=key)
     values = [s['data'][key] for s in songs]
-  
+
   return sort_test_fn
-  
+
 def test_sort_mtime():
   with_index(make_sort_fn('mtime'))
 
@@ -326,7 +327,7 @@ def test_search_year_interval():
     assert len(songs_2010) == 5
     assert len(songs_1999) == 0
     assert len(songs_early_00s) == 2
-    
+
   with_index(search_interval_year)
 
 def test_search_rating_interval():
@@ -340,13 +341,13 @@ def test_search_rating_interval():
       songs_high = search(db, q_high)
       assert len(songs_all) == 4
       assert len(songs_high) == 4
-    
+
     with_index(search_rating_interval)
 
 def test_find_all():
   from db.xapian_music import all_songs
   from db.dirtree import get_files
-  
+
   def test_all_songs(db):
     files = [f for f in get_files(os.path.join(TESTDIR, "music_dir"))]
     song_paths = [song['data']['path'] for song in all_songs(db)]
