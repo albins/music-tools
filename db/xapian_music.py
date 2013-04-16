@@ -201,41 +201,69 @@ def search(dbpath, querystring, order=None):
                       data=(json.loads(unicode(match.document.get_data()))))
             for match in query(dbpath, querystring, order)]
 
-def add_tag(dbpath, querystring, tag):
+def parseTags(tagString):
+    """Parse the tags in tagString, returning a tuple of tags to add
+    and to remove."""
+
+    remove = []
+    add = []
+    for tag in tagString.split():
+        if tag[:1] == "-":
+            remove.append(tag[1:])
+        else:
+            add.append(tag)
+    return add, remove
+
+def tag(dbPath, queryString, tagString):
+    "Add and remove tags (in one transaction) to the db att dbPath."
+
+    addTags, removeTags = parseTags(tagString)
+    # This is a list of touples with document ID and Document objects
+    # to modify.
+    docsModify = []
+
+    try:
+        db = xapian.WritableDatabase(dbPath, xapian.DB_CREATE_OR_OPEN)
+        # We open the database this early because it will lock the
+        # database for writing, making sure our fetched documents
+        # doesn't change during the processing, making us overwrite
+        # changes at the last step.
+
+        # It is the responsibility of the client/higher level
+        # interface to handle queuing of database writes.
+        for match in query(dbPath, queryString):
+            doc = match.document
+            data = json.loads(doc.get_data())
+            # Remove the tags to remove:
+            newTags = filter(lambda t: not t in removeTags, data['tags'])
+            #...and add the tags to add:
+            newTags = newTags + addTags
+            data['tags'] = newTags
+        
+            for tag in removeTags:
+                doc.remove_term('K' + tag.lower())
+            for tag in addTags:
+                doc.add_boolean_term('K' + tag.lower())
+
+            doc.set_data(unicode(json.dumps(data)))
+            docsModify.append((match.docid, doc))
+
+        # This is done finally to avoid half-completed
+        # transactions. Either all documents matching the search
+        # should be given all the specified tags, or none.
+        for docId, doc in docsModify:
+            db.replace_document(docId, doc)
+    finally:
+        db.close()
+
+def add_tag(dbpath, querystring, addTag):
     "Add the tag <tag> to all songs matching <querystring>."
-    db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
+    tag(dbpath, querystring, unicode(addTag))
 
-    for m in query(dbpath, querystring):
-        doc = m.document
-        data = json.loads(doc.get_data())
-        new_tags = data['tags']
-
-        new_tags.append(tag)
-        doc.add_boolean_term('K' + tag.lower())
-        data['tags'] = new_tags
-        doc.set_data(unicode(json.dumps(data)))
-        # This is to make sure the term was actually added BEFORE
-        # modifying the database.
-        assert 'K' + tag.lower() in [t.term for t in doc.termlist()]
-
-        db.replace_document(m.docid, doc)
-
-def remove_tag(dbpath, querystring, tag):
+def remove_tag(dbpath, querystring, removeTag):
     """Remove the tag <tag> (if existing) from all entries in the
     database at dbpath matching querystring."""
-    db = xapian.WritableDatabase(dbpath, xapian.DB_CREATE_OR_OPEN)
-
-    for m in query(dbpath, querystring):
-        doc = m.document
-        data = json.loads(doc.get_data())
-        new_tags = [tag for tag in data['tags'] if tag != tag]
-
-        doc.remove_term('K' + tag.lower())
-        data['tags'] = new_tags
-        doc.set_data(unicode(json.dumps(data)))
-        assert 'K' + tag.lower() not in [t.term for t in doc.termlist()]
-
-        db.replace_document(m.docid, doc)
+    tag(dbpath, querystring, unicode("-" + removeTag))
 
 def all_songs(dbpath):
     "Iterator over all songs stored in the database <dbpath>."
